@@ -46,7 +46,7 @@ var protectedEndpoints = []EndpointInfo{
 }
 
 func IsEndpointProtected(endpoint string, appConfig config.AppConfig) bool {
-	if appConfig.MakeViewerEndpointsPublic == false {
+	if appConfig.JWTConfig.MakeViewerEndpointsPublic == false {
 		return true
 	}
 	for _, info := range protectedEndpoints {
@@ -57,7 +57,7 @@ func IsEndpointProtected(endpoint string, appConfig config.AppConfig) bool {
 	return false
 }
 func isEndpointSwaggerProtected(method, path string, appConfig config.AppConfig) bool {
-	if appConfig.MakeViewerEndpointsPublic == false {
+	if appConfig.JWTConfig.MakeViewerEndpointsPublic == false {
 		return true
 	}
 	for _, info := range protectedEndpoints {

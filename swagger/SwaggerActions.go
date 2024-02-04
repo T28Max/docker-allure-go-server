@@ -61,7 +61,7 @@ func (swagger Config) Update(appConfig config.AppConfig) (*gin.Engine, error) {
 	// Serve Swagger UI
 	router.GET(swagger.SwaggerEndpointPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// Security Section
-	if appConfig.EnableSecurityLogin {
+	if appConfig.JWTConfig.EnableSecurityLogin {
 		err = swagger.GenerateSecuritySwaggerSpec(appConfig)
 	}
 	return router, err
