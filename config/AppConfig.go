@@ -52,6 +52,7 @@ type AppConfig struct {
 	CleanResultsProcess      string
 	RenderEmailReportProcess string
 	AllureVersion            string
+	SecuritySpecsPath        string
 	StaticContent            string
 	ProjectsDirectory        string
 
@@ -81,42 +82,54 @@ func DefaultConfig() AppConfig {
 		ApiResponseLessVerbose:    false,
 		EmailableReportCss:        GlobalCss,
 		StaticContent:             "static",
+		SecuritySpecsPath:         "swagger/security_specs",
 	}
 }
 func DefaultConfigEnv() (AppConfig, error) {
 	root := os.Getenv("ROOT")
-	appConfig := AppConfig{
-		DevMode:                   false,
-		Host:                      "0.0.0.0",
-		Threads:                   7,
-		UrlScheme:                 "http",
-		EnableSecurityLogin:       false,
-		MakeViewerEndpointsPublic: false,
-		Origin:                    "api",
-		CheckResultsEverySeconds:  false,
-		KeepHistory:               false,
-		KeepHistoryLatest:         30,
-		OptimizeStorage:           false,
-		ApiResponseLessVerbose:    false,
-
-		GenerateReportProcess:    fmt.Sprintf("%s/generateAllureReport.sh", root),
-		KeepHistoryProcess:       fmt.Sprintf("%s/keepAllureHistory.sh", root),
-		CleanHistoryProcess:      fmt.Sprintf("%s/cleanAllureHistory.sh", root),
-		CleanResultsProcess:      fmt.Sprintf("%s/cleanAllureResults.sh", root),
-		RenderEmailReportProcess: fmt.Sprintf("%s/renderEmailableReport.sh", root),
-
-		AllureVersion:           os.Getenv("ALLURE_VERSION"),
-		StaticContent:           os.Getenv("STATIC_CONTENT"),
-		ProjectsDirectory:       os.Getenv("STATIC_CONTENT_PROJECTS"),
-		EmailableReportFileName: os.Getenv("EMAILABLE_REPORT_FILE_NAME"),
-		EmailableReportCss:      GlobalCss,
-	}
+	appConfig := DefaultConfig()
+	appConfig.GenerateReportProcess = fmt.Sprintf("%s/generateAllureReport.sh", root)
+	appConfig.KeepHistoryProcess = fmt.Sprintf("%s/keepAllureHistory.sh", root)
+	appConfig.CleanHistoryProcess = fmt.Sprintf("%s/cleanAllureHistory.sh", root)
+	appConfig.CleanResultsProcess = fmt.Sprintf("%s/cleanAllureResults.sh", root)
+	appConfig.RenderEmailReportProcess = fmt.Sprintf("%s/renderEmailableReport.sh", root)
+	//appConfig := AppConfig{
+	//	DevMode:                   false,
+	//	Host:                      "0.0.0.0",
+	//	Threads:                   7,
+	//	UrlScheme:                 "http",
+	//	EnableSecurityLogin:       false,
+	//	MakeViewerEndpointsPublic: false,
+	//	Origin:                    "api",
+	//	CheckResultsEverySeconds:  false,
+	//	KeepHistory:               false,
+	//	KeepHistoryLatest:         30,
+	//	OptimizeStorage:           false,
+	//	ApiResponseLessVerbose:    false,
+	//
+	//	GenerateReportProcess:    fmt.Sprintf("%s/generateAllureReport.sh", root),
+	//	KeepHistoryProcess:       fmt.Sprintf("%s/keepAllureHistory.sh", root),
+	//	CleanHistoryProcess:      fmt.Sprintf("%s/cleanAllureHistory.sh", root),
+	//	CleanResultsProcess:      fmt.Sprintf("%s/cleanAllureResults.sh", root),
+	//	RenderEmailReportProcess: fmt.Sprintf("%s/renderEmailableReport.sh", root),
+	//
+	//	AllureVersion:           os.Getenv("ALLURE_VERSION"),
+	//	StaticContent:           os.Getenv("STATIC_CONTENT"),
+	//	ProjectsDirectory:       os.Getenv("STATIC_CONTENT_PROJECTS"),
+	//	EmailableReportFileName: os.Getenv("EMAILABLE_REPORT_FILE_NAME"),
+	//	EmailableReportCss:      GlobalCss,
+	//}
 
 	port, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
 		return appConfig, err
 	}
 	appConfig.Port = port
+
+	utils.UpdateKey("ALLURE_VERSION", &appConfig.AllureVersion)
+	utils.UpdateKey("STATIC_CONTENT", &appConfig.StaticContent)
+	utils.UpdateKey("STATIC_CONTENT_PROJECTS", &appConfig.ProjectsDirectory)
+	utils.UpdateKey("EMAILABLE_REPORT_FILE_NAME", &appConfig.EmailableReportFileName)
 
 	utils.UpdateKey("EMAILABLE_REPORT_CSS_CDN", &appConfig.EmailableReportCss)
 	utils.UpdateKey("EMAILABLE_REPORT_TITLE", &appConfig.EmailableReportTitle)

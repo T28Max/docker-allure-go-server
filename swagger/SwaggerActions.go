@@ -15,7 +15,7 @@
 package swagger
 
 import (
-	config "allure-server/globals"
+	"allure-server/config"
 	"allure-server/utils"
 	"encoding/json"
 	"fmt"
@@ -25,39 +25,56 @@ import (
 	"os"
 )
 
-var (
-	NATIVE_PREFIX         = "/allure-docker-service"
-	SWAGGER_ENDPOINT      = "/swagger"
-	SWAGGER_SPEC_FILE     = "/swagger.json"
-	SWAGGER_ENDPOINT_PATH = fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_ENDPOINT)
-	SWAGGER_SPEC          = fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_SPEC_FILE)
+type Config struct {
+	NativePrefix        string
+	SwaggerEndpoint     string
+	SwaggerSpecFile     string
+	SwaggerEndpointPath string
+	SwaggerSpec         string
+}
+
+const (
+	NATIVE_PREFIX     = "/allure-docker-service"
+	SWAGGER_ENDPOINT  = "/swagger"
+	SWAGGER_SPEC_FILE = "/swagger.json"
+	//SWAGGER_ENDPOINT_PATH = fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_ENDPOINT)
+	//SWAGGER_SPEC          = fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_SPEC_FILE)
 )
 
-func register() (*gin.Engine, error) {
+func DefaultConfig() Config {
+	return Config{
+		NativePrefix:        NATIVE_PREFIX,
+		SwaggerEndpoint:     SWAGGER_ENDPOINT,
+		SwaggerSpecFile:     SWAGGER_SPEC_FILE,
+		SwaggerEndpointPath: fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_ENDPOINT),
+		SwaggerSpec:         fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_SPEC_FILE),
+	}
+
+}
+func (swagger Config) Update(appConfig config.AppConfig) (*gin.Engine, error) {
 	err := error(nil)
-	if config.URL_PREFIX != "" {
-		SWAGGER_ENDPOINT_PATH = fmt.Sprintf("%s%s%s", config.URL_PREFIX, NATIVE_PREFIX, SWAGGER_ENDPOINT)
-		SWAGGER_SPEC = fmt.Sprintf("%s%s%s", config.URL_PREFIX, NATIVE_PREFIX, SWAGGER_SPEC_FILE)
+	if appConfig.UrlPrefix != "" {
+		swagger.SwaggerEndpointPath = fmt.Sprintf("%s%s%s", appConfig.UrlPrefix, swagger.NativePrefix, swagger.SwaggerEndpoint)
+		swagger.SwaggerSpec = fmt.Sprintf("%s%s%s", appConfig.UrlPrefix, swagger.NativePrefix, swagger.SwaggerSpecFile)
 	}
 	router := gin.Default()
 	// Serve Swagger UI
-	router.GET(SWAGGER_ENDPOINT_PATH, ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET(swagger.SwaggerEndpointPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// Security Section
-	if config.ENABLE_SECURITY_LOGIN {
-		err = GenerateSecuritySwaggerSpec()
+	if appConfig.EnableSecurityLogin {
+		err = swagger.GenerateSecuritySwaggerSpec(appConfig)
 	}
 	return router, err
-
 }
 
-func getSecuritySpecs() (map[string]interface{}, error) {
+func (swagger Config) getSecuritySpecs(appConfig config.AppConfig) (map[string]interface{}, error) {
 	securitySpecs := make(map[string]interface{})
-	files, err := os.ReadDir(fmt.Sprintf("%s/%s/", config.STATIC_CONTENT, config.SECURITY_SPECS_PATH))
+	files, err := os.ReadDir(fmt.Sprintf("%s/%s/", appConfig.StaticContent, appConfig.SecuritySpecsPath))
 	if err != nil {
 		return nil, err
 	}
 	for _, file := range files {
-		filePath := fmt.Sprintf("%s/%s/%s", config.STATIC_CONTENT, config.SECURITY_SPECS_PATH, file.Name())
+		filePath := fmt.Sprintf("%s/%s/%s", appConfig.StaticContent, appConfig.SecuritySpecsPath, file.Name())
 		content, err := utils.GetFileAsString(filePath)
 		if err != nil {
 			return nil, err
@@ -81,12 +98,12 @@ func contains(arr []string, str string) bool {
 	return false
 }
 
-func GenerateSecuritySwaggerSpec() error {
-	securitySpecs, err := getSecuritySpecs()
+func (swagger Config) GenerateSecuritySwaggerSpec(appConfig config.AppConfig) error {
+	securitySpecs, err := swagger.getSecuritySpecs(appConfig)
 	if err != nil {
 		return err
 	}
-	swaggerFilePath := fmt.Sprintf("%s/swagger/swagger.json", config.STATIC_CONTENT)
+	swaggerFilePath := fmt.Sprintf("%s/swagger/swagger.json", appConfig.StaticContent)
 	data, err := os.ReadFile(swaggerFilePath)
 	if err != nil {
 		return err
@@ -132,7 +149,7 @@ func GenerateSecuritySwaggerSpec() error {
 			}
 		}
 	}
-	swaggerSecurityFilePath := fmt.Sprintf("%s/swagger/swagger_security.json", config.STATIC_CONTENT)
+	swaggerSecurityFilePath := fmt.Sprintf("%s/swagger/swagger_security.json", appConfig.StaticContent)
 	err = os.WriteFile(swaggerSecurityFilePath, data, 0644)
 	if err != nil {
 		return err
