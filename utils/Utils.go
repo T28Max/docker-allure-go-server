@@ -15,6 +15,10 @@
 package utils
 
 import (
+	"allure-server/globals"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -41,6 +45,14 @@ func GetFileAsString(filePath string) (string, error) {
 	return string(content), nil
 }
 func IntInRange(a int, list []int) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+func StringInArray(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
 			return true
@@ -89,4 +101,42 @@ func UpdateOrDefaultBool(key string, currentVar *bool, defaultVal bool) {
 func UpdateOrDefaultFalse(key string, currentVar *bool) {
 	UpdateOrDefaultBool(key, currentVar, false)
 
+}
+
+func IsExistentProject(projectID, projectDir string) bool {
+	if projectID == "" {
+		return false
+	}
+	projectPath := GetProjectPath(projectID, projectDir)
+	_, err := os.Stat(projectPath)
+	return err == nil
+}
+
+func GetProjectPath(projectID, projectDir string) string {
+	if projectDir == "" {
+		return projectID
+	}
+	// Implementation of getting project path
+	return fmt.Sprintf("%s/%s", projectDir, projectID)
+}
+func ResolveProject(projectIdParam string) string {
+	projectId := "default"
+	if projectIdParam != "" {
+		projectId = projectIdParam
+	}
+	return projectId
+
+}
+func GetKey() string {
+	// Set JWT secret key
+	jwtSecretKey, exists := os.LookupEnv(globals.JwtSecretKey)
+	if !exists {
+		randomBytes := make([]byte, 16)
+		_, err := rand.Read(randomBytes)
+		if err != nil {
+			log.Fatalf("Failed to generate random bytes: %v", err)
+		}
+		jwtSecretKey = hex.EncodeToString(randomBytes)
+	}
+	return jwtSecretKey
 }

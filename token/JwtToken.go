@@ -15,26 +15,13 @@
 package token
 
 import (
-	"allure-server/globals"
-	"crypto/rand"
-	"encoding/hex"
 	"github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 )
 
-const infinite = time.Hour * 24 * 360 * 10 //10 years
-// User struct represents the user information
-//
-//	type User struct {
-//		ID    string `form:"id" json:"id"`
-//		Email string `form:"email" json:"email"`
-//	}
 func InitJWTMiddleware(tls bool) (*jwt.GinJWTMiddleware, error) {
 	// Initialize JWT middleware settings
 	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
@@ -112,142 +99,4 @@ func protectedHandler(c *gin.Context) {
 	// Handler for the protected endpoint
 	user := c.MustGet("id").(*UserAccess)
 	c.JSON(http.StatusOK, gin.H{"user_id": user.GetUsername(), "message": "This is a protected endpoint"})
-}
-
-var USERS_INFO map[string]UserInfo
-
-func updateTLS() (*jwt.GinJWTMiddleware, error) {
-	if val, ok := os.LookupEnv("TLS"); ok {
-		// string to int
-		if i, err := strconv.Atoi(val); err != nil && i == 1 {
-			globals.URL_SCHEME = "https"
-			//app.config['JWT_COOKIE_SECURE'] = True
-			log.Printf("Enabling TLS=%d", i)
-			return InitJWTMiddleware(true)
-		}
-	}
-	log.Printf("Wrong env var value. Setting TLS=0 by default\n")
-	return InitJWTMiddleware(false)
-}
-
-func getKey() string {
-	// Set JWT secret key
-	jwtSecretKey, exists := os.LookupEnv("JWT_SECRET_KEY")
-	if !exists {
-		randomBytes := make([]byte, 16)
-		_, err := rand.Read(randomBytes)
-		if err != nil {
-			log.Fatalf("Failed to generate random bytes: %v", err)
-		}
-		jwtSecretKey = hex.EncodeToString(randomBytes)
-	}
-	return jwtSecretKey
-}
-func makeSecure() (*jwt.GinJWTMiddleware, error) {
-	authMiddleware, err := updateTLS()
-	// Set JWT secret key
-	authMiddleware.Key = []byte(getKey())
-	getSecurityEnabled()
-
-	updateAccessToken(authMiddleware, true)
-	updateAccessToken(authMiddleware, false)
-	updateRefreshToken(authMiddleware, true)
-	updateRefreshToken(authMiddleware, false)
-	return authMiddleware, err
-}
-func updateAccessToken(app *jwt.GinJWTMiddleware, isSeconds bool) {
-	amount := time.Second
-	key := "ACCESS_TOKEN_EXPIRES_IN_"
-	if isSeconds {
-		key += "SECONDS"
-	} else {
-		key += "MINUTES"
-		amount = time.Minute
-	}
-	// For ACCESS_TOKEN_EXPIRES_IN_SECONDS
-	if accessTokenExpiresInSecondsStr, exists := os.LookupEnv(key); exists {
-		if accessTokenExpiresInSeconds, err := strconv.Atoi(accessTokenExpiresInSecondsStr); err == nil {
-			if accessTokenExpiresInSeconds > 0 {
-				seconds := time.Duration(accessTokenExpiresInSeconds) * amount
-				app.Timeout = seconds
-				log.Printf("Setting %s=%d\n", key, accessTokenExpiresInSeconds)
-			} else {
-				app.Timeout = infinite
-				log.Println("Disabling ACCESS_TOKEN expiration")
-			}
-		} else {
-			log.Printf("Wrong env var value. Setting %s by default to 15 mins\n", key)
-		}
-	}
-}
-
-func updateRefreshToken(app *jwt.GinJWTMiddleware, isSeconds bool) {
-	amount := time.Second
-	key := "REFRESH_TOKEN_EXPIRES_IN_"
-	if isSeconds {
-		key += "SECONDS"
-	} else {
-		key += "DAYS"
-		amount = time.Hour * 24
-	}
-	// For REFRESH_TOKEN_EXPIRES_IN_SECONDS
-	if refreshTokenExpiresInSecondsStr, exists := os.LookupEnv(key); exists {
-		if refreshTokenExpiresInSeconds, err := strconv.Atoi(refreshTokenExpiresInSecondsStr); err == nil {
-			if refreshTokenExpiresInSeconds > 0 {
-				seconds := time.Duration(refreshTokenExpiresInSeconds) * amount
-				app.MaxRefresh = seconds
-				log.Printf("Setting %s=%d\n", key, refreshTokenExpiresInSeconds)
-			} else {
-				app.MaxRefresh = infinite
-				log.Println("Disabling REFRESH_TOKEN expiration")
-			}
-		} else {
-			log.Printf("Wrong env var value. Setting %s keeps disabled\n", key)
-		}
-	}
-}
-func getSecurityEnabled() {
-	// Check if "SECURITY_ENABLED" environment variable exists
-	if securityEnabledTmp, exists := os.LookupEnv("SECURITY_ENABLED"); exists {
-		// Try to convert the value to an integer
-		if enableSecurityLoginTmp, err := strconv.Atoi(securityEnabledTmp); err == nil {
-			// Additional checks for SECURITY_USER and SECURITY_PASS
-			if globals.SECURITY_USER != "" && globals.SECURITY_PASS != "" {
-				// Ensure SECURITY_USER and SECURITY_VIEWER_USER are different
-				if globals.SECURITY_USER != globals.SECURITY_VIEWER_USER {
-					// Check the value of ENABLE_SECURITY_LOGIN_TMP
-					if enableSecurityLoginTmp == 1 {
-						globals.ENABLE_SECURITY_LOGIN = true
-						log.Printf("Enabling Security Login. SECURITY_ENABLED=%d\n", enableSecurityLoginTmp)
-
-						// Populate USERS_INFO with ADMIN user information
-						USERS_INFO[globals.SECURITY_USER] = UserInfo{
-							Pass:  globals.SECURITY_PASS,
-							Roles: []string{globals.ADMIN_ROLE_NAME},
-						}
-
-						// If SECURITY_VIEWER_USER and SECURITY_VIEWER_PASS are provided, populate USERS_INFO with VIEWER user information
-						if globals.SECURITY_VIEWER_USER != "" && globals.SECURITY_VIEWER_PASS != "" {
-							USERS_INFO[globals.SECURITY_VIEWER_USER] = UserInfo{
-								Pass:  globals.SECURITY_VIEWER_PASS,
-								Roles: []string{globals.VIEWER_ROLE_NAME},
-							}
-						}
-					} else {
-						log.Println("Setting SECURITY_ENABLED=0 by default")
-					}
-				} else {
-					log.Println("SECURITY_USER and SECURITY_VIEWER_USER should be different")
-					log.Println("Setting SECURITY_ENABLED=0 by default")
-				}
-			} else {
-				log.Println("To enable security you need 'SECURITY_USER' & 'SECURITY_PASS' env vars")
-				log.Println("Setting SECURITY_ENABLED=0 by default")
-			}
-		} else {
-			log.Printf("Wrong env var value. Setting SECURITY_ENABLED=0 by default. Error: %v\n", err)
-		}
-	} else {
-		log.Println("Setting SECURITY_ENABLED=0 by default")
-	}
 }

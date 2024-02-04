@@ -14,6 +14,8 @@
 
 package token
 
+import "allure-server/utils"
+
 type UserAccess struct {
 	UserName string
 	Roles    []string
@@ -25,4 +27,10 @@ func (ua *UserAccess) GetRoles() []string {
 
 func (ua *UserAccess) GetUsername() string {
 	return ua.UserName
+}
+func (ua *UserAccess) CheckAccess(role string) bool {
+	if role == "" {
+		return false
+	}
+	return utils.StringInArray(role, ua.Roles)
 }

@@ -15,10 +15,15 @@
 package swagger
 
 import (
-	config "allure-server/globals"
+	"allure-server/config"
+	"allure-server/utils"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"os"
+	"regexp"
+	"strings"
 )
 
 // EndpointInfo represents information about a protected endpoint
@@ -40,8 +45,8 @@ var protectedEndpoints = []EndpointInfo{
 	{"delete", "/projects/{id}", "delete_project_endpoint"},
 }
 
-func IsEndpointProtected(endpoint string) bool {
-	if config.MAKE_VIEWER_ENDPOINTS_PUBLIC == false {
+func IsEndpointProtected(endpoint string, appConfig config.AppConfig) bool {
+	if appConfig.MakeViewerEndpointsPublic == false {
 		return true
 	}
 	for _, info := range protectedEndpoints {
@@ -51,8 +56,8 @@ func IsEndpointProtected(endpoint string) bool {
 	}
 	return false
 }
-func isEndpointSwaggerProtected(method, path string) bool {
-	if config.MAKE_VIEWER_ENDPOINTS_PUBLIC == false {
+func isEndpointSwaggerProtected(method, path string, appConfig config.AppConfig) bool {
+	if appConfig.MakeViewerEndpointsPublic == false {
 		return true
 	}
 	for _, info := range protectedEndpoints {
@@ -63,14 +68,65 @@ func isEndpointSwaggerProtected(method, path string) bool {
 	return false
 }
 
-func getReportsEndpoint(w http.ResponseWriter, r *http.Request) {
+func getReportsEndpoint(w http.ResponseWriter, r *http.Request, appConfig config.AppConfig) {
 	vars := mux.Vars(r)
 	projectID := vars["project_id"]
 	path := vars["path"]
 	redirect := vars["redirect"]
 	if redirect == "false" {
-		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", config.STATIC_CONTENT, projectID, path))
+		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", appConfig.StaticContent, projectID, path))
 	} else {
-		http.Redirect(w, r, fmt.Sprintf("%s/%s/%s", config.STATIC_CONTENT, projectID, path), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("%s/%s/%s", appConfig.StaticContent, projectID, path), http.StatusFound)
 	}
+}
+func createProject(jsonBody map[string]interface{}, appConfig config.AppConfig) (string, error) {
+	if _, ok := jsonBody["id"]; !ok {
+		return "", errors.New("'id' is required in the body")
+	}
+
+	id, ok := jsonBody["id"].(string)
+	if !ok {
+		return "", errors.New("'id' should be a string")
+	}
+
+	if strings.TrimSpace(id) == "" {
+		return "", errors.New("'id' should not be empty")
+	}
+
+	if len(id) > 100 {
+		return "", errors.New("'id' should not contain more than 100 characters")
+	}
+
+	projectIDPattern := regexp.MustCompile("^[a-z\\d]([a-z\\d -]*[a-z\\d])?$")
+	if !projectIDPattern.MatchString(id) {
+		return "", errors.New("'id' should contain alphanumeric lowercase characters or hyphens. For example: 'my-project-id'")
+	}
+
+	if utils.IsExistentProject(id, appConfig.ProjectsDirectory) {
+		return "", errors.New("project_id '" + id + "' is existent")
+	}
+
+	if id == "default" {
+		return "", errors.New("the id 'default' is not allowed. Try with another project_id")
+	}
+
+	projectPath := utils.GetProjectPath(id, appConfig.ProjectsDirectory)
+	latestReportProject := projectPath + "/reports/latest"
+	resultsProject := projectPath + "/results"
+
+	if _, err := os.Stat(latestReportProject); os.IsNotExist(err) {
+		err := os.MkdirAll(latestReportProject, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if _, err := os.Stat(resultsProject); os.IsNotExist(err) {
+		err := os.MkdirAll(resultsProject, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return id, nil
 }

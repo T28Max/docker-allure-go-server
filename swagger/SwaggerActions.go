@@ -34,20 +34,20 @@ type Config struct {
 }
 
 const (
-	NATIVE_PREFIX     = "/allure-docker-service"
-	SWAGGER_ENDPOINT  = "/swagger"
-	SWAGGER_SPEC_FILE = "/swagger.json"
+	NativePrefix = "/allure-docker-service"
+	Endpoint     = "/swagger"
+	SpecFile     = "/swagger.json"
 	//SWAGGER_ENDPOINT_PATH = fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_ENDPOINT)
 	//SWAGGER_SPEC          = fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_SPEC_FILE)
 )
 
 func DefaultConfig() Config {
 	return Config{
-		NativePrefix:        NATIVE_PREFIX,
-		SwaggerEndpoint:     SWAGGER_ENDPOINT,
-		SwaggerSpecFile:     SWAGGER_SPEC_FILE,
-		SwaggerEndpointPath: fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_ENDPOINT),
-		SwaggerSpec:         fmt.Sprintf("%s%s", NATIVE_PREFIX, SWAGGER_SPEC_FILE),
+		NativePrefix:        NativePrefix,
+		SwaggerEndpoint:     Endpoint,
+		SwaggerSpecFile:     SpecFile,
+		SwaggerEndpointPath: fmt.Sprintf("%s%s", NativePrefix, Endpoint),
+		SwaggerSpec:         fmt.Sprintf("%s%s", NativePrefix, SpecFile),
 	}
 
 }
@@ -128,7 +128,7 @@ func (swagger Config) GenerateSecuritySwaggerSpec(appConfig config.AppConfig) er
 	paths := swaggerData["paths"].(map[string]interface{})
 	for path := range paths {
 		for method := range paths[path].(map[string]interface{}) {
-			if isEndpointSwaggerProtected(method, path) {
+			if isEndpointSwaggerProtected(method, path, appConfig) {
 				tags := paths[path].(map[string]interface{})[method].(map[string]interface{})["tags"].([]interface{})
 				for _, tag := range tags {
 					if contains(ensureTags, tag.(string)) {
