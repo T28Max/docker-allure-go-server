@@ -1,0 +1,1 @@
+# docker-allure-go-server
