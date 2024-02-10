@@ -21,13 +21,17 @@ const (
 	SecurityViewerUser = "SECURITY_VIEWER_USER"
 	SecurityViewerPass = "SECURITY_VIEWER_PASS"
 
-	Root                   = "ROOT"
-	Port                   = "PORT"
-	ApiResponseLessVerbose = "API_RESPONSE_LESS_VERBOSE"
-	DevMode                = "DEV_MODE"
-	OptimizeStorage        = "OPTIMIZE_STORAGE"
-	UrlPrefix              = "URL_PREFIX"
-	AllureVersion          = "ALLURE_VERSION"
+	Root                     = "ROOT"
+	Port                     = "PORT"
+	ApiResponseLessVerbose   = "API_RESPONSE_LESS_VERBOSE"
+	DevMode                  = "DEV_MODE"
+	OptimizeStorage          = "OPTIMIZE_STORAGE"
+	UrlPrefix                = "URL_PREFIX"
+	AllureVersion            = "ALLURE_VERSION"
+	CheckResultsEverySeconds = "CHECK_RESULTS_EVERY_SECONDS"
+	KeepHistory              = "KEEP_HISTORY"
+	KeepHistoryLatest        = "KEEP_HISTORY_LATEST"
+	ServerUrl                = "SERVER_URL"
 
 	StaticContent         = "STATIC_CONTENT"
 	StaticContentProjects = "STATIC_CONTENT_PROJECTS"
@@ -36,9 +40,9 @@ const (
 	EmailableReportCssCdn   = "EMAILABLE_REPORT_CSS_CDN"
 	EmailableReportTitle    = "EMAILABLE_REPORT_TITLE"
 
-	LanguageTemplate = "language.html"
-	GlobalCss        = "https://stackpath.bootstrapcdn.com/bootswatch/4.3.1/cosmo/bootstrap.css"
-	ReportIndexFile  = "index.html"
+	//LanguageTemplate = "language.html"
+	GlobalCss       = "https://stackpath.bootstrapcdn.com/bootswatch/4.3.1/cosmo/bootstrap.css"
+	ReportIndexFile = "index.html"
 
 	/*JWT constants*/
 
@@ -48,4 +52,5 @@ const (
 	RefreshTokenExpiresInDays    = "REFRESH_TOKEN_EXPIRES_IN_DAYS"
 	JwtSecretKey                 = "JWT_SECRET_KEY"
 	Tls                          = "TLS"
+	JwtCookieSecure              = "JWT_COOKIE_SECURE"
 )
