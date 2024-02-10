@@ -22,8 +22,53 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/swag"
 	"os"
+	"path/filepath"
 )
+
+type appSwagger struct {
+	Config config.AppConfig
+}
+
+func (s *appSwagger) ReadDoc() string {
+	specificationFile := "swagger.json"
+	if s.Config.JWTConfig.EnableSecurityLogin {
+		specificationFile = "swagger_security.json"
+	}
+	// Replace with the path to your static content directory
+	staticContent := "static"
+	spec, err := utils.GetFileAsString(filepath.Join(staticContent, "swagger", specificationFile))
+	if err != nil {
+		panic(err)
+	}
+	if s.Config.UrlPrefix != "" {
+		var specJSON map[string]interface{}
+		if err := json.Unmarshal([]byte(spec), &specJSON); err != nil {
+			panic(err)
+		}
+
+		serverURL, ok := specJSON["servers"].([]interface{})[0].(map[string]interface{})["url"].(string)
+		if !ok {
+			panic("Invalid server URL")
+		}
+
+		specJSON["servers"].([]interface{})[0].(map[string]interface{})["url"] = fmt.Sprintf("%s%s", s.Config.UrlPrefix, serverURL)
+
+		b, err := json.Marshal(specJSON)
+		if err != nil {
+			panic(err)
+		}
+		return string(b)
+	}
+	return spec
+
+}
+
+//func init() {
+//	doc := &appSwagger{}
+//	swag.Register("swagger", doc)
+//}
 
 type Config struct {
 	NativePrefix        string
@@ -59,11 +104,13 @@ func (swagger Config) Update(appConfig config.AppConfig) (*gin.Engine, error) {
 	}
 	router := gin.Default()
 	// Serve Swagger UI
-	router.GET(swagger.SwaggerEndpointPath, ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET(swagger.SwaggerEndpointPath+"/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// Security Section
 	if appConfig.JWTConfig.EnableSecurityLogin {
 		err = swagger.GenerateSecuritySwaggerSpec(appConfig)
 	}
+	doc := &appSwagger{Config: appConfig}
+	swag.Register("swagger", doc)
 	return router, err
 }
 
@@ -113,6 +160,7 @@ func (swagger Config) GenerateSecuritySwaggerSpec(appConfig config.AppConfig) er
 	if err != nil {
 		return err
 	}
+
 	securityTags := securitySpecs["security_tags.json"].(map[string]interface{})
 	swaggerData["tags"] = append(swaggerData["tags"].([]interface{}), securityTags)
 	swaggerData["paths"].(map[string]interface{})["/login"] = securitySpecs["login_spec.json"]
@@ -150,7 +198,11 @@ func (swagger Config) GenerateSecuritySwaggerSpec(appConfig config.AppConfig) er
 		}
 	}
 	swaggerSecurityFilePath := fmt.Sprintf("%s/swagger/swagger_security.json", appConfig.StaticContent)
-	err = os.WriteFile(swaggerSecurityFilePath, data, 0644)
+	marshal, err := json.Marshal(swaggerData)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(swaggerSecurityFilePath, marshal, 0644)
 	if err != nil {
 		return err
 	}
