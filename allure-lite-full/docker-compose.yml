@@ -1,0 +1,47 @@
+services:
+  api:
+    build: ./services/api
+    env_file: .env
+    depends_on: [redis]
+    volumes:
+      - reports:/reports
+      - apidata:/data
+    networks: [appnet]
+
+  worker:
+    build: ./services/worker
+    env_file: .env
+    depends_on: [redis, api]
+    volumes:
+      - reports:/reports
+      - apidata:/data
+    networks: [appnet]
+  
+  web:
+    build: ./services/web
+    networks: [appnet]
+    
+  nginx:
+    build: 
+      context: ./services/nginx
+      additional_contexts:
+        web: ./services/web
+    depends_on: [api, web]
+    ports:
+      - "8080:80"
+    volumes:
+      - reports:/usr/share/nginx/html/reports:ro
+    networks: [appnet]
+  
+  redis:
+    image: redis:7-alpine
+    networks: [appnet]
+
+volumes:
+  reports:
+  apidata:
+  webr:
+
+networks:
+  appnet:
+    driver: bridge
