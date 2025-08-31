@@ -9,7 +9,10 @@ services:
     networks: [appnet]
 
   worker:
-    build: ./services/worker
+    build:
+      context: ./services/worker
+      args:
+        ALLURE_VERSION: ${ALLURE_VERSION}
     env_file: .env
     depends_on: [redis, api]
     volumes:
@@ -20,6 +23,10 @@ services:
   web:
     build: ./services/web
     networks: [appnet]
+    ports:
+      - "5173:5173"
+    volumes:
+      - webr:/usr/share/nginx/html/web:ro
     
   nginx:
     build: 
@@ -31,6 +38,7 @@ services:
       - "8080:80"
     volumes:
       - reports:/usr/share/nginx/html/reports:ro
+      - webr:/usr/share/nginx/html/web:ro
     networks: [appnet]
   
   redis:
